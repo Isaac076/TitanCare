@@ -1,0 +1,88 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=Playfair+Display:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --navy-950: #060c18;
+  --navy-900: #0B1120;
+  --navy-800: #111827;
+  --navy-700: #1e2d45;
+  --brand-600: #2E7CF6;
+  --brand-700: #1d4ed8;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100dvh;
+  overscroll-behavior: none;
+}
+
+/* PWA safe areas */
+.safe-top    { padding-top: env(safe-area-inset-top); }
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+
+/* Staggered card animations */
+.card-enter-0 { animation: fadeUp 0.4s 0.05s ease both; }
+.card-enter-1 { animation: fadeUp 0.4s 0.12s ease both; }
+.card-enter-2 { animation: fadeUp 0.4s 0.19s ease both; }
+.card-enter-3 { animation: fadeUp 0.4s 0.26s ease both; }
+.card-enter-4 { animation: fadeUp 0.4s 0.33s ease both; }
+.card-enter-5 { animation: fadeUp 0.4s 0.40s ease both; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #1e2d45 25%, #243552 50%, #1e2d45 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 8px;
+}
+
+/* PIN input styling */
+.pin-input {
+  width: 52px;
+  height: 64px;
+  text-align: center;
+  font-size: 24px;
+  font-weight: 600;
+  background: rgba(255,255,255,0.05);
+  border: 1.5px solid rgba(255,255,255,0.12);
+  border-radius: 12px;
+  color: white;
+  caret-color: #2E7CF6;
+  transition: border-color 0.15s;
+}
+
+.pin-input:focus {
+  outline: none;
+  border-color: #2E7CF6;
+  background: rgba(46,124,246,0.08);
+}
+
+.pin-input.error {
+  border-color: #ef4444;
+  animation: shake 0.3s ease;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25%       { transform: translateX(-6px); }
+  75%       { transform: translateX(6px); }
+}
