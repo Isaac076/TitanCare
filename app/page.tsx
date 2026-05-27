@@ -2,7 +2,7 @@ import Link from 'next/link'
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center gap-6 p-8">
+    <main className="min-h-screen flex flex-col items-center justify-center gap-6 p-8 bg-gradient-to-br from-teal-400 to-cyan-500">
       <h1 className="text-4xl font-bold">TitanCare</h1>
 
       <p className="text-gray-500">
