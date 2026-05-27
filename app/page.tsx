@@ -10,12 +10,11 @@ export default function HomePage() {
       </p>
 
       <div className="flex gap-4">
-        <Link href="/register" className="px-4 py-2 rounded bg-black text-white">
-          Register
-        </Link>
-
-        <Link href="/admin" className="px-4 py-2 rounded border">
-          Admin
+        <Link
+          href="/register"
+          className="px-4 py-2 rounded bg-black text-white"
+        >
+          Register Patient
         </Link>
       </div>
     </main>
