@@ -38,10 +38,14 @@ export function PatientPortal({ data, patientId }: Props) {
   const [viewingDoc, setViewingDoc] = useState<DocType | null>(null)
   const [showPhysician, setShowPhysician] = useState(false)
   const [pinIsSet, setPinIsSet] = useState(data.pinIsSet)
-  const [displayName, setDisplayName] = useState(
-    data.patient.display_name ?? `${data.patient.first_name} ${data.patient.last_name}`
+  const [displayName, setDisplayName] = useState<string>(
+    typeof data.patient.display_name === 'string'
+      ? data.patient.display_name
+      : `${data.patient.first_name} ${data.patient.last_name}`
   )
-  const [photoUrl, setPhotoUrl] = useState<string | null>(data.patient.photo_url ?? null)
+  const [photoUrl, setPhotoUrl] = useState<string | null>(
+    typeof data.patient.photo_url === 'string' ? data.patient.photo_url : null
+  )
 
   const initials = displayName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
 

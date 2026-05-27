@@ -157,7 +157,9 @@ export function SetPIN({ patientId, hasExistingPin, onSuccess, onClose }: Props)
               {activePin.map((digit, i) => (
                 <input
                   key={i}
-                  ref={el => (inputRefs.current[i] = el)}
+                  ref={el => {
+                    inputRefs.current[i] = el
+                  }}
                   type="tel"
                   inputMode="numeric"
                   maxLength={1}

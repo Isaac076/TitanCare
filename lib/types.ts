@@ -54,7 +54,12 @@ export interface AccessToken {
 
 // Composed view returned to the patient portal
 export interface PatientPortalData {
-  patient: Pick< Patient,'first_name' | 'last_name' | 'display_name' | 'photo_url' >
+  patient: {
+    first_name: string
+    last_name: string
+    display_name: string | null
+    photo_url: string | null
+  }
   implant: Pick<Implant, 'implant_date' | 'model'> | null
   physician: Pick<Physician, 'full_name' | 'phone' | 'clinic_name'> | null
   publicDocs: Array<{ doc_type: DocType; id: string }>
