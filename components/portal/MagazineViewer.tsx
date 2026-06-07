@@ -10,45 +10,44 @@ interface Props {
 }
 
 interface PageData {
-  canvas: HTMLCanvasElement
-  pageNum: number
+  dataUrl: string
+  width: number
+  height: number
 }
 
 export function MagazineViewer({ signedUrl, onClose }: Props) {
   const { lang } = useLang()
   const [pages, setPages] = useState<PageData[]>([])
-  const [currentPage, setCurrentPage] = useState(0) // index of LEFT page
+  const [currentPage, setCurrentPage] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
   const [loading, setLoading] = useState(true)
   const [loadingProgress, setLoadingProgress] = useState(0)
   const [error, setError] = useState('')
   const [flipping, setFlipping] = useState(false)
-  const [flipDirection, setFlipDirection] = useState<'left' | 'right'>('right')
+  const [flipDirection, setFlipDirection] = useState<'left' | 'right'>('left')
   const [zoom, setZoom] = useState(1)
-
-  // Swipe
   const touchStartX = useRef<number>(0)
-  const touchStartY = useRef<number>(0)
-  const containerRef = useRef<HTMLDivElement>(null)
 
-  // Cargar PDF con PDF.js
-  useEffect(() => {
-    loadPDF()
-  }, [signedUrl])
+  useEffect(() => { loadPDF() }, [signedUrl])
 
   const loadPDF = async () => {
     try {
-      // Cargar PDF.js dinámicamente
+      // Importar pdfjs-dist y configurar worker como módulo
       const pdfjsLib = await import('pdfjs-dist')
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
+
+      // Usar el worker bundleado con Next.js (evita CSP)
+      const workerUrl = new URL(
+        'pdfjs-dist/build/pdf.worker.min.mjs',
+        import.meta.url
+      )
+      pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl.toString()
 
       const pdf = await pdfjsLib.getDocument({ url: signedUrl }).promise
       const total = pdf.numPages
       setTotalPages(total)
 
-      const renderedPages: PageData[] = []
+      const rendered: PageData[] = []
 
-      // Renderizar todas las páginas
       for (let i = 1; i <= total; i++) {
         const page = await pdf.getPage(i)
         const viewport = page.getViewport({ scale: 1.8 })
@@ -60,11 +59,16 @@ export function MagazineViewer({ signedUrl, onClose }: Props) {
         const ctx = canvas.getContext('2d')!
         await page.render({ canvasContext: ctx, viewport, canvas }).promise
 
-        renderedPages.push({ canvas, pageNum: i })
+        rendered.push({
+          dataUrl: canvas.toDataURL('image/jpeg', 0.85),
+          width: viewport.width,
+          height: viewport.height,
+        })
+
         setLoadingProgress(Math.round((i / total) * 100))
       }
 
-      setPages(renderedPages)
+      setPages(rendered)
       setLoading(false)
     } catch (err) {
       console.error('PDF load error:', err)
@@ -80,38 +84,22 @@ export function MagazineViewer({ signedUrl, onClose }: Props) {
     if (!canGoNext || flipping) return
     setFlipDirection('left')
     setFlipping(true)
-    setTimeout(() => {
-      setCurrentPage(p => p + 2)
-      setFlipping(false)
-    }, 400)
+    setTimeout(() => { setCurrentPage(p => p + 2); setFlipping(false) }, 380)
   }, [canGoNext, flipping])
 
   const goPrev = useCallback(() => {
     if (!canGoPrev || flipping) return
     setFlipDirection('right')
     setFlipping(true)
-    setTimeout(() => {
-      setCurrentPage(p => Math.max(0, p - 2))
-      setFlipping(false)
-    }, 400)
+    setTimeout(() => { setCurrentPage(p => Math.max(0, p - 2)); setFlipping(false) }, 380)
   }, [canGoPrev, flipping])
 
-  // Swipe handlers
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX
-    touchStartY.current = e.touches[0].clientY
-  }
-
+  const handleTouchStart = (e: React.TouchEvent) => { touchStartX.current = e.touches[0].clientX }
   const handleTouchEnd = (e: React.TouchEvent) => {
     const dx = e.changedTouches[0].clientX - touchStartX.current
-    const dy = e.changedTouches[0].clientY - touchStartY.current
-    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
-      if (dx < 0) goNext()
-      else goPrev()
-    }
+    if (Math.abs(dx) > 40) { if (dx < 0) goNext(); else goPrev() }
   }
 
-  // Keyboard
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'ArrowRight') goNext()
@@ -122,20 +110,23 @@ export function MagazineViewer({ signedUrl, onClose }: Props) {
     return () => window.removeEventListener('keydown', handler)
   }, [goNext, goPrev, onClose])
 
-  const leftPage = pages[currentPage]
+  const leftPage  = pages[currentPage]
   const rightPage = pages[currentPage + 1]
   const spreadLabel = `${currentPage + 1}${rightPage ? `–${currentPage + 2}` : ''} / ${totalPages}`
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#1a0a00] flex flex-col items-center justify-center"
+    <div
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center"
+      style={{ background: 'radial-gradient(ellipse at center, #2a1a0a 0%, #0d0600 100%)' }}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
       {/* Header */}
-      <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 py-3 bg-gradient-to-b from-black/60 to-transparent z-10">
+      <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 py-3 z-10"
+        style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.7), transparent)' }}>
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-full bg-[#00B3D1] flex items-center justify-center">
-            <svg width="14" height="14" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <div className="w-6 h-6 rounded-full overflow-hidden">
+            <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
               <circle cx="50" cy="50" r="50" fill="#00B3D1"/>
               <clipPath id="mc"><circle cx="50" cy="50" r="44"/></clipPath>
               <g clipPath="url(#mc)" fill="#0B2D5E">
@@ -147,19 +138,21 @@ export function MagazineViewer({ signedUrl, onClose }: Props) {
               </g>
             </svg>
           </div>
-          <span className="text-white text-[13px] font-medium opacity-80">
+          <span className="text-white text-[13px] font-medium" style={{ opacity: 0.85 }}>
             {lang === 'en' ? 'Post-Op Instructions' : 'Instrucciones Post-Op'}
           </span>
         </div>
-        <div className="flex items-center gap-2">
-          {/* Zoom */}
-          <button onClick={() => setZoom(z => Math.min(2, z + 0.25))} className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
+        <div className="flex items-center gap-1.5">
+          <button onClick={() => setZoom(z => Math.min(2.5, +(z + 0.25).toFixed(2)))}
+            className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.1)' }}>
             <ZoomIn className="w-4 h-4 text-white" />
           </button>
-          <button onClick={() => setZoom(z => Math.max(0.5, z - 0.25))} className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
+          <button onClick={() => setZoom(z => Math.max(0.5, +(z - 0.25).toFixed(2)))}
+            className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.1)' }}>
             <ZoomOut className="w-4 h-4 text-white" />
           </button>
-          <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center ml-1">
+          <button onClick={onClose}
+            className="w-8 h-8 rounded-full flex items-center justify-center ml-1" style={{ background: 'rgba(255,255,255,0.1)' }}>
             <X className="w-4 h-4 text-white" />
           </button>
         </div>
@@ -168,157 +161,95 @@ export function MagazineViewer({ signedUrl, onClose }: Props) {
       {/* Loading */}
       {loading && (
         <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-8 h-8 text-[#00B3D1] animate-spin" />
-          <div className="w-48 h-1.5 bg-white/10 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-[#00B3D1] rounded-full transition-all duration-300"
-              style={{ width: `${loadingProgress}%` }}
-            />
+          <Loader2 className="w-8 h-8 animate-spin" style={{ color: '#00B3D1' }} />
+          <div className="w-52 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.1)' }}>
+            <div className="h-full rounded-full transition-all duration-300" style={{ width: `${loadingProgress}%`, background: '#00B3D1' }} />
           </div>
-          <p className="text-slate-400 text-[12px]">
-            {lang === 'en' ? `Loading ${loadingProgress}%...` : `Cargando ${loadingProgress}%...`}
+          <p className="text-[12px]" style={{ color: 'rgba(255,255,255,0.4)' }}>
+            {lang === 'en' ? `Loading ${loadingProgress}%` : `Cargando ${loadingProgress}%`}
           </p>
         </div>
       )}
 
       {error && (
-        <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-[10px] px-4 py-3">
+        <div className="flex items-center gap-2 rounded-[10px] px-4 py-3" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)' }}>
           <AlertCircle className="w-4 h-4 text-red-400" />
           <p className="text-red-300 text-[13px]">{error}</p>
         </div>
       )}
 
-      {/* Magazine spread */}
+      {/* Spread */}
       {!loading && !error && pages.length > 0 && (
-        <div
-          ref={containerRef}
-          className="relative flex items-center justify-center w-full h-full px-12"
-          style={{ perspective: '2000px' }}
-        >
-          {/* Prev button */}
-          <button
-            onClick={goPrev}
-            disabled={!canGoPrev}
-            className="absolute left-2 z-10 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-20 flex items-center justify-center transition-all"
-          >
-            <ChevronLeft className="w-5 h-5 text-white" />
+        <div className="relative flex items-center justify-center w-full h-full px-14" style={{ perspective: '2400px' }}>
+
+          {/* Prev */}
+          <button onClick={goPrev} disabled={!canGoPrev}
+            className="absolute left-2 z-10 w-10 h-10 rounded-full flex items-center justify-center transition-all"
+            style={{ background: canGoPrev ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.04)' }}>
+            <ChevronLeft className="w-5 h-5 text-white" style={{ opacity: canGoPrev ? 1 : 0.2 }} />
           </button>
 
-          {/* Book spread */}
-          <div
-            className="relative flex items-center justify-center"
-            style={{
-              transform: `scale(${zoom})`,
-              transition: 'transform 0.2s ease',
-              transformOrigin: 'center center',
-            }}
-          >
-            {/* Shadow bajo el libro */}
-            <div className="absolute -bottom-4 left-4 right-4 h-8 bg-black/50 blur-xl rounded-full" />
+          <div style={{ transform: `scale(${zoom})`, transition: 'transform 0.2s ease', transformOrigin: 'center center', display: 'flex', alignItems: 'center', position: 'relative' }}>
+
+            {/* Sombra */}
+            <div style={{ position: 'absolute', bottom: '-12px', left: '6%', right: '6%', height: '20px', background: 'rgba(0,0,0,0.6)', filter: 'blur(12px)', borderRadius: '50%' }} />
 
             {/* Página izquierda */}
-            <div
-              className="relative overflow-hidden rounded-l-sm"
-              style={{
-                boxShadow: 'inset -4px 0 8px rgba(0,0,0,0.3)',
-                transformOrigin: 'right center',
-                animation: flipping && flipDirection === 'right'
-                  ? 'flipInLeft 0.4s ease-in-out'
-                  : flipping && flipDirection === 'left'
-                  ? 'flipOutLeft 0.4s ease-in-out'
-                  : 'none',
-              }}
-            >
-              {leftPage ? (
-                <canvas
-                  ref={el => { if (el && leftPage.canvas) { el.width = leftPage.canvas.width; el.height = leftPage.canvas.height; el.getContext('2d')?.drawImage(leftPage.canvas, 0, 0) } }}
-                  style={{ display: 'block', maxHeight: 'calc(100vh - 120px)', maxWidth: 'calc(50vw - 48px)', width: 'auto', height: 'auto' }}
-                />
-              ) : (
-                <div className="w-48 h-64 bg-[#f5f0e8]" />
-              )}
-              {/* Sombra interior izquierda */}
-              <div className="absolute inset-0 pointer-events-none"
-                style={{ background: 'linear-gradient(to right, rgba(0,0,0,0.15) 0%, transparent 30%)' }}
-              />
+            <div style={{
+              position: 'relative', overflow: 'hidden', borderRadius: '2px 0 0 2px',
+              boxShadow: 'inset -6px 0 12px rgba(0,0,0,0.35)',
+              transformOrigin: 'right center',
+              animation: flipping ? (flipDirection === 'right' ? 'flipInL 0.38s ease' : 'flipOutL 0.38s ease') : 'none',
+            }}>
+              {leftPage
+                ? <img src={leftPage.dataUrl} alt="" style={{ display: 'block', maxHeight: 'calc(100vh - 130px)', maxWidth: 'calc(50vw - 56px)', width: 'auto', height: 'auto' }} />
+                : <div style={{ width: 200, height: 280, background: '#f5f0e8' }} />
+              }
+              <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'linear-gradient(to right, rgba(0,0,0,0.18) 0%, transparent 25%)' }} />
             </div>
 
-            {/* Lomo del libro */}
-            <div style={{
-              width: '6px',
-              alignSelf: 'stretch',
-              background: 'linear-gradient(to right, #8B7355, #D4C4A0, #8B7355)',
-              boxShadow: '0 0 8px rgba(0,0,0,0.5)',
-              flexShrink: 0,
-            }} />
+            {/* Lomo */}
+            <div style={{ width: '7px', alignSelf: 'stretch', flexShrink: 0, background: 'linear-gradient(to right, #6b5230, #d4b483, #c8a96e, #d4b483, #6b5230)', boxShadow: '0 0 10px rgba(0,0,0,0.6)' }} />
 
             {/* Página derecha */}
-            <div
-              className="relative overflow-hidden rounded-r-sm"
-              style={{
-                boxShadow: 'inset 4px 0 8px rgba(0,0,0,0.3)',
-                transformOrigin: 'left center',
-                animation: flipping && flipDirection === 'left'
-                  ? 'flipInRight 0.4s ease-in-out'
-                  : flipping && flipDirection === 'right'
-                  ? 'flipOutRight 0.4s ease-in-out'
-                  : 'none',
-              }}
-            >
-              {rightPage ? (
-                <canvas
-                  ref={el => { if (el && rightPage.canvas) { el.width = rightPage.canvas.width; el.height = rightPage.canvas.height; el.getContext('2d')?.drawImage(rightPage.canvas, 0, 0) } }}
-                  style={{ display: 'block', maxHeight: 'calc(100vh - 120px)', maxWidth: 'calc(50vw - 48px)', width: 'auto', height: 'auto' }}
-                />
-              ) : (
-                <div style={{ width: leftPage?.canvas.width, height: leftPage?.canvas.height, maxHeight: 'calc(100vh - 120px)', maxWidth: 'calc(50vw - 48px)', background: '#f5f0e8' }} />
-              )}
-              {/* Sombra interior derecha */}
-              <div className="absolute inset-0 pointer-events-none"
-                style={{ background: 'linear-gradient(to left, rgba(0,0,0,0.15) 0%, transparent 30%)' }}
-              />
+            <div style={{
+              position: 'relative', overflow: 'hidden', borderRadius: '0 2px 2px 0',
+              boxShadow: 'inset 6px 0 12px rgba(0,0,0,0.35)',
+              transformOrigin: 'left center',
+              animation: flipping ? (flipDirection === 'left' ? 'flipInR 0.38s ease' : 'flipOutR 0.38s ease') : 'none',
+            }}>
+              {rightPage
+                ? <img src={rightPage.dataUrl} alt="" style={{ display: 'block', maxHeight: 'calc(100vh - 130px)', maxWidth: 'calc(50vw - 56px)', width: 'auto', height: 'auto' }} />
+                : <div style={{ width: leftPage?.width ?? 200, height: leftPage?.height ?? 280, maxHeight: 'calc(100vh - 130px)', maxWidth: 'calc(50vw - 56px)', background: '#f5f0e8' }} />
+              }
+              <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'linear-gradient(to left, rgba(0,0,0,0.18) 0%, transparent 25%)' }} />
             </div>
           </div>
 
-          {/* Next button */}
-          <button
-            onClick={goNext}
-            disabled={!canGoNext}
-            className="absolute right-2 z-10 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-20 flex items-center justify-center transition-all"
-          >
-            <ChevronRight className="w-5 h-5 text-white" />
+          {/* Next */}
+          <button onClick={goNext} disabled={!canGoNext}
+            className="absolute right-2 z-10 w-10 h-10 rounded-full flex items-center justify-center transition-all"
+            style={{ background: canGoNext ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.04)' }}>
+            <ChevronRight className="w-5 h-5 text-white" style={{ opacity: canGoNext ? 1 : 0.2 }} />
           </button>
         </div>
       )}
 
       {/* Footer */}
       {!loading && !error && (
-        <div className="absolute bottom-4 left-0 right-0 flex items-center justify-center gap-4">
-          <p className="text-slate-500 text-[11px] font-mono">{spreadLabel}</p>
-          <p className="text-slate-600 text-[10px]">
+        <div className="absolute bottom-4 left-0 right-0 flex items-center justify-center gap-3">
+          <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11, fontFamily: 'monospace' }}>{spreadLabel}</p>
+          <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: 10 }}>
             {lang === 'en' ? '← swipe →' : '← desliza →'}
           </p>
         </div>
       )}
 
-      {/* Keyframe animations */}
       <style>{`
-        @keyframes flipOutLeft {
-          0%   { transform: rotateY(0deg); }
-          100% { transform: rotateY(-25deg); opacity: 0.7; }
-        }
-        @keyframes flipInLeft {
-          0%   { transform: rotateY(-25deg); opacity: 0.7; }
-          100% { transform: rotateY(0deg); opacity: 1; }
-        }
-        @keyframes flipOutRight {
-          0%   { transform: rotateY(0deg); }
-          100% { transform: rotateY(25deg); opacity: 0.7; }
-        }
-        @keyframes flipInRight {
-          0%   { transform: rotateY(25deg); opacity: 0.7; }
-          100% { transform: rotateY(0deg); opacity: 1; }
-        }
+        @keyframes flipOutL { 0%{transform:rotateY(0)} 100%{transform:rotateY(-22deg);opacity:.65} }
+        @keyframes flipInL  { 0%{transform:rotateY(-22deg);opacity:.65} 100%{transform:rotateY(0);opacity:1} }
+        @keyframes flipOutR { 0%{transform:rotateY(0)} 100%{transform:rotateY(22deg);opacity:.65} }
+        @keyframes flipInR  { 0%{transform:rotateY(22deg);opacity:.65} 100%{transform:rotateY(0);opacity:1} }
       `}</style>
     </div>
   )
