@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react'
 import { useApiFetch } from '@/lib/token-context'
 import { useLang } from '@/lib/lang-context'
-import { X, Camera, ImageIcon, User, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
+import { X, Camera, User, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
 
 interface Props {
   patientId: string
@@ -21,10 +21,8 @@ export function EditProfile({ patientId, currentName, currentPhoto, onSuccess, o
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
-  const [showPhotoOptions, setShowPhotoOptions] = useState(false)
 
-  const cameraRef = useRef<HTMLInputElement>(null)
-  const libraryRef = useRef<HTMLInputElement>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
   const apiFetch = useApiFetch()
 
   const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -34,7 +32,6 @@ export function EditProfile({ patientId, currentName, currentPhoto, onSuccess, o
     if (file.size > 5 * 1024 * 1024) { setError(t('edit_error_size')); return }
     setPhotoFile(file)
     setError('')
-    setShowPhotoOptions(false)
     const reader = new FileReader()
     reader.onload = ev => setPhotoPreview(ev.target?.result as string)
     reader.readAsDataURL(file)
@@ -96,26 +93,13 @@ export function EditProfile({ patientId, currentName, currentPhoto, onSuccess, o
                 <div className="w-20 h-20 rounded-full overflow-hidden bg-gradient-to-br from-brand-600 to-sky-400 flex items-center justify-center">
                   {photoPreview ? <img src={photoPreview} alt="Foto" className="w-full h-full object-cover" /> : <User className="w-8 h-8 text-white" />}
                 </div>
-                <button onClick={() => setShowPhotoOptions(v => !v)} className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-brand-600 border-2 border-navy-900 flex items-center justify-center">
+                <button onClick={() => fileRef.current?.click()} className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-brand-600 border-2 border-navy-900 flex items-center justify-center">
                   <Camera className="w-3.5 h-3.5 text-white" />
                 </button>
               </div>
               <p className="text-slate-400 text-[11px] mt-2">{t('edit_photo_hint')}</p>
-              <input ref={cameraRef} type="file" accept="image/*" onChange={handleFileSelected} className="hidden" />
-              <input ref={libraryRef} type="file" accept="image/*" onChange={handleFileSelected} className="hidden" />
+              <input ref={fileRef} type="file" accept="image/*" onChange={handleFileSelected} className="hidden" />
             </div>
-            {showPhotoOptions && (
-              <div className="mb-5 bg-white/5 border border-white/10 rounded-[14px] overflow-hidden">
-                <button onClick={() => { setShowPhotoOptions(false); cameraRef.current?.click() }} className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-white/5 border-b border-white/5 text-left transition-colors">
-                  <Camera className="w-4 h-4 text-brand-400" />
-                  <span className="text-white text-[14px]">{t('edit_camera')}</span>
-                </button>
-                <button onClick={() => { setShowPhotoOptions(false); libraryRef.current?.click() }} className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-white/5 text-left transition-colors">
-                  <ImageIcon className="w-4 h-4 text-brand-400" />
-                  <span className="text-white text-[14px]">{t('edit_library')}</span>
-                </button>
-              </div>
-            )}
             <div className="mb-5">
               <label className="text-slate-400 text-[11px] font-medium uppercase tracking-wide mb-1.5 block">{t('edit_name_label')}</label>
               <input type="text" value={name} onChange={e => { setName(e.target.value); setError('') }} placeholder={t('edit_name_placeholder')} className="w-full bg-white/5 border border-white/10 rounded-[12px] px-4 py-3 text-white text-[14px] placeholder-slate-600 focus:outline-none focus:border-brand-600 transition-colors" />

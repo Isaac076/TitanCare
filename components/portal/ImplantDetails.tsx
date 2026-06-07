@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useApiFetch } from '@/lib/token-context'
 import { useLang } from '@/lib/lang-context'
-import { Lock, X, Camera, ImageIcon, Save, CheckCircle2, AlertCircle, Loader2, BadgeInfo, ZoomIn } from 'lucide-react'
+import { Lock, X, Camera, Save, CheckCircle2, AlertCircle, Loader2, BadgeInfo, ZoomIn } from 'lucide-react'
 
 type ImplantModel = 'Titan Touch' | 'Titan NB' | 'Genesis' | ''
 
@@ -40,10 +40,8 @@ export function ImplantDetails({ patientId, onChangePin, onClose }: Props) {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const [zoomPhoto, setZoomPhoto] = useState(false)
-  const [showPhotoOptions, setShowPhotoOptions] = useState(false)
 
-  const cameraRef = useRef<HTMLInputElement>(null)
-  const libraryRef = useRef<HTMLInputElement>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => { loadData() }, [])
 
@@ -73,7 +71,6 @@ export function ImplantDetails({ patientId, onChangePin, onClose }: Props) {
     if (file.size > 10 * 1024 * 1024) { setError(t('implant_error_size')); return }
     setFotoFile(file)
     setError('')
-    setShowPhotoOptions(false)
     const reader = new FileReader()
     reader.onload = ev => setFotoPreview(ev.target?.result as string)
     reader.readAsDataURL(file)
@@ -200,30 +197,17 @@ export function ImplantDetails({ patientId, onChangePin, onClose }: Props) {
                     <button onClick={() => setZoomPhoto(true)} className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/50 flex items-center justify-center">
                       <ZoomIn className="w-4 h-4 text-white" />
                     </button>
-                    <button onClick={() => setShowPhotoOptions(v => !v)} className="mt-2 w-full bg-white/5 border border-white/10 rounded-[10px] py-2 text-[12px] text-slate-400 flex items-center justify-center gap-2">
+                    <button onClick={() => fileRef.current?.click()} className="mt-2 w-full bg-white/5 border border-white/10 rounded-[10px] py-2 text-[12px] text-slate-400 flex items-center justify-center gap-2">
                       <Camera className="w-3.5 h-3.5" />{t('implant_photo_change')}
                     </button>
                   </div>
                 ) : (
-                  <button onClick={() => setShowPhotoOptions(v => !v)} className="w-full bg-white/5 border border-dashed border-white/20 rounded-[12px] py-6 flex flex-col items-center gap-2">
+                  <button onClick={() => fileRef.current?.click()} className="w-full bg-white/5 border border-dashed border-white/20 rounded-[12px] py-6 flex flex-col items-center gap-2">
                     <Camera className="w-6 h-6 text-slate-500" />
                     <p className="text-[12px] text-slate-500">{t('implant_photo_add')}</p>
                   </button>
                 )}
-                {showPhotoOptions && (
-                  <div className="mt-2 bg-white/5 border border-white/10 rounded-[14px] overflow-hidden">
-                    <button onClick={() => { setShowPhotoOptions(false); cameraRef.current?.click() }} className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-white/5 border-b border-white/5 text-left transition-colors">
-                      <Camera className="w-4 h-4 text-brand-400" />
-                      <span className="text-white text-[14px]">{t('edit_camera')}</span>
-                    </button>
-                    <button onClick={() => { setShowPhotoOptions(false); libraryRef.current?.click() }} className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-white/5 text-left transition-colors">
-                      <ImageIcon className="w-4 h-4 text-brand-400" />
-                      <span className="text-white text-[14px]">{t('edit_library')}</span>
-                    </button>
-                  </div>
-                )}
-                <input ref={cameraRef} type="file" accept="image/*" onChange={handleFileSelected} className="hidden" />
-                <input ref={libraryRef} type="file" accept="image/*" onChange={handleFileSelected} className="hidden" />
+                <input ref={fileRef} type="file" accept="image/*" onChange={handleFileSelected} className="hidden" />
               </div>
 
               {error && (
