@@ -222,7 +222,7 @@ export function ImplantDetails({ patientId, onChangePin, onClose }: Props) {
                     </button>
                   </div>
                 )}
-                <input ref={cameraRef} type="file" accept="image/*" capture="environment" onChange={handleFileSelected} className="hidden" />
+                <input ref={cameraRef} type="file" accept="image/*" onChange={handleFileSelected} className="hidden" />
                 <input ref={libraryRef} type="file" accept="image/*" onChange={handleFileSelected} className="hidden" />
               </div>
 

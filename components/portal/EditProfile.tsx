@@ -101,7 +101,7 @@ export function EditProfile({ patientId, currentName, currentPhoto, onSuccess, o
                 </button>
               </div>
               <p className="text-slate-400 text-[11px] mt-2">{t('edit_photo_hint')}</p>
-              <input ref={cameraRef} type="file" accept="image/*" capture="environment" onChange={handleFileSelected} className="hidden" />
+              <input ref={cameraRef} type="file" accept="image/*" onChange={handleFileSelected} className="hidden" />
               <input ref={libraryRef} type="file" accept="image/*" onChange={handleFileSelected} className="hidden" />
             </div>
             {showPhotoOptions && (
