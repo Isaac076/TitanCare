@@ -75,6 +75,8 @@ export function PatientPortal({ data, patientId }: Props) {
     postop:        { label: t('doc_postop_label'),  sub: t('doc_postop_sub'),  icon: ClipboardList, iconBg: 'bg-amber-50',  iconColor: 'text-amber-600' },
     implant_sheet: { label: t('doc_implant_label'), sub: t('doc_implant_sub'), icon: BadgeInfo,     iconBg: 'bg-violet-50', iconColor: 'text-violet-600' },
     faq:           { label: t('doc_faq_label'),     sub: t('doc_faq_sub'),     icon: HelpCircle,    iconBg: 'bg-rose-50',   iconColor: 'text-rose-600' },
+    faq_es:        { label: t('doc_faq_label'),     sub: t('doc_faq_sub'),     icon: HelpCircle,    iconBg: 'bg-rose-50',   iconColor: 'text-rose-600' },
+    faq_en:        { label: t('doc_faq_label'),     sub: t('doc_faq_sub'),     icon: HelpCircle,    iconBg: 'bg-rose-50',   iconColor: 'text-rose-600' },
   }
 
   const PUBLIC_DOC_ORDER: DocType[] = ['mri', 'airport', 'postop', 'faq']
