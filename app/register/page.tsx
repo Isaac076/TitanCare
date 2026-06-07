@@ -24,7 +24,7 @@ export default function RegisterPage() {
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [implantDate, setImplantDate] = useState('')
-  const [model, setModel] = useState('Titan OTR')
+  const [model, setModel] = useState('Titan Touch')
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -96,7 +96,7 @@ export default function RegisterPage() {
     setFirstName('')
     setLastName('')
     setImplantDate('')
-    setModel('Titan OTR')
+    setModel('Titan Touch')
     setError('')
     setResult(null)
     setStep('form')
@@ -210,9 +210,9 @@ export default function RegisterPage() {
                   onChange={e => setModel(e.target.value)}
                   className="w-full bg-navy-800 border border-white/10 rounded-[10px] px-4 py-2.5 text-white text-[13px] focus:outline-none focus:border-brand-600 transition-colors"
                 >
-                  <option value="Titan OTR">Titan OTR</option>
                   <option value="Titan Touch">Titan Touch</option>
                   <option value="Titan NB">Titan NB</option>
+                  <option value="Genesis">Genesis</option>
                 </select>
               </div>
 
