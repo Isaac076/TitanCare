@@ -5,6 +5,7 @@ import { useApiFetch } from '@/lib/token-context'
 import { useLang } from '@/lib/lang-context'
 import { X, FileText, Download, AlertCircle, Loader2 } from 'lucide-react'
 import type { DocType } from '@/lib/types'
+import { MagazineViewer } from './MagazineViewer'
 
 interface Props {
   docType: DocType
@@ -20,7 +21,6 @@ export function DocumentViewer({ docType, patientId, isGlobal, onClose }: Props)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
 
-  // Etiquetas con traducciones
   const DOC_LABELS: Record<DocType, string> = {
     mri:           t('doc_mri_label'),
     airport:       t('doc_airport_label'),
@@ -31,7 +31,7 @@ export function DocumentViewer({ docType, patientId, isGlobal, onClose }: Props)
     faq_en:        t('doc_faq_label'),
   }
 
-  // Si es FAQ, usar el doc_type del idioma activo
+  // FAQ → usar doc del idioma activo
   const resolvedDocType: DocType = docType === 'faq'
     ? (lang === 'en' ? 'faq_en' : 'faq_es')
     : docType
@@ -53,6 +53,11 @@ export function DocumentViewer({ docType, patientId, isGlobal, onClose }: Props)
     } finally {
       setLoading(false)
     }
+  }
+
+  // Post-Op → visor de revista
+  if (docType === 'postop' && signedUrl && !loading) {
+    return <MagazineViewer signedUrl={signedUrl} onClose={onClose} />
   }
 
   return (
