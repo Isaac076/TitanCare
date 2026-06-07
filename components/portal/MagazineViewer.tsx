@@ -58,7 +58,7 @@ export function MagazineViewer({ signedUrl, onClose }: Props) {
         canvas.height = viewport.height
 
         const ctx = canvas.getContext('2d')!
-        await page.render({ canvasContext: ctx, viewport }).promise
+        await page.render({ canvasContext: ctx, viewport, canvas }).promise
 
         renderedPages.push({ canvas, pageNum: i })
         setLoadingProgress(Math.round((i / total) * 100))
