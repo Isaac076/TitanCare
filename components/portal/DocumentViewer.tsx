@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useApiFetch } from '@/lib/token-context'
+import { useLang } from '@/lib/lang-context'
 import { X, FileText, Download, AlertCircle, Loader2 } from 'lucide-react'
 import type { DocType } from '@/lib/types'
 
@@ -12,35 +13,43 @@ interface Props {
   onClose: () => void
 }
 
-const DOC_LABELS: Record<DocType, string> = {
-  mri:           'Compatibilidad MRI',
-  airport:       'Carta para Aeropuerto',
-  postop:        'Instrucciones Post-Op',
-  implant_sheet: 'Detalles del Implante',
-  faq:           'Preguntas Frecuentes',
-}
-
 export function DocumentViewer({ docType, patientId, isGlobal, onClose }: Props) {
+  const { t, lang } = useLang()
+  const apiFetch = useApiFetch()
   const [signedUrl, setSignedUrl] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => { fetchSignedUrl() }, [])
+  // Etiquetas con traducciones
+  const DOC_LABELS: Record<DocType, string> = {
+    mri:           t('doc_mri_label'),
+    airport:       t('doc_airport_label'),
+    postop:        t('doc_postop_label'),
+    implant_sheet: t('doc_implant_label'),
+    faq:           t('doc_faq_label'),
+    faq_es:        t('doc_faq_label'),
+    faq_en:        t('doc_faq_label'),
+  }
 
-  const apiFetch = useApiFetch()
+  // Si es FAQ, usar el doc_type del idioma activo
+  const resolvedDocType: DocType = docType === 'faq'
+    ? (lang === 'en' ? 'faq_en' : 'faq_es')
+    : docType
+
+  useEffect(() => { fetchSignedUrl() }, [])
 
   const fetchSignedUrl = async () => {
     try {
       const res = await apiFetch('/api/documents/signed-url', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ patientId, docType, isGlobal }),
+        body: JSON.stringify({ patientId, docType: resolvedDocType, isGlobal }),
       })
-      if (!res.ok) throw new Error('No se pudo cargar el documento')
+      if (!res.ok) throw new Error()
       const { url } = await res.json()
       setSignedUrl(url)
     } catch {
-      setError('No se pudo cargar el documento. Intenta de nuevo.')
+      setError(t('viewer_error'))
     } finally {
       setLoading(false)
     }
@@ -56,7 +65,7 @@ export function DocumentViewer({ docType, patientId, isGlobal, onClose }: Props)
             </div>
             <div>
               <p className="text-white font-medium text-[14px]">{DOC_LABELS[docType]}</p>
-              <p className="text-slate-500 text-[11px]">Documento PDF</p>
+              <p className="text-slate-500 text-[11px]">{t('viewer_pdf')}</p>
             </div>
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10">
@@ -67,7 +76,7 @@ export function DocumentViewer({ docType, patientId, isGlobal, onClose }: Props)
         {loading && (
           <div className="flex items-center justify-center py-10 gap-3">
             <Loader2 className="w-5 h-5 text-brand-400 animate-spin" />
-            <span className="text-slate-400 text-[13px]">Cargando documento...</span>
+            <span className="text-slate-400 text-[13px]">{t('viewer_loading')}</span>
           </div>
         )}
 
@@ -82,7 +91,7 @@ export function DocumentViewer({ docType, patientId, isGlobal, onClose }: Props)
           <>
             <div className="bg-white/5 border border-white/10 rounded-[12px] p-4 mb-4">
               <p className="text-[12px] text-slate-300 leading-relaxed">
-                Tu documento está listo. Se abrirá en tu navegador. El enlace expira en 15 minutos por seguridad.
+                {t('viewer_ready')}
               </p>
             </div>
             <button
@@ -90,7 +99,7 @@ export function DocumentViewer({ docType, patientId, isGlobal, onClose }: Props)
               className="w-full bg-brand-600 hover:bg-brand-700 text-white rounded-[12px] py-3.5 flex items-center justify-center gap-2 font-medium text-[14px] transition-colors active:scale-[0.98]"
             >
               <Download className="w-4 h-4" />
-              Abrir Documento
+              {t('viewer_open')}
             </button>
           </>
         )}

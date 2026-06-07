@@ -4,8 +4,28 @@ import { useState } from 'react'
 import {
   Activity, Plane, ClipboardList, BadgeInfo,
   Phone, HelpCircle, ChevronRight, Shield,
-  CheckCircle2, Pencil, Lock, User,
+  Pencil,
 } from 'lucide-react'
+
+// Logo Coloplast: círculo aqua con franjas onduladas azul marino
+function ColoplastLogo({ size = 28 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="50" cy="50" r="50" fill="#00B3D1"/>
+      <clipPath id="cc">
+        <circle cx="50" cy="50" r="44"/>
+      </clipPath>
+      <g clipPath="url(#cc)" fill="#0B2D5E">
+        <path d="M6 54 Q50 48 94 54 L94 106 Q50 106 6 106 Z"/>
+        <path d="M8 50 Q30 44 50 47 Q70 50 92 44 L92 48 Q70 54 50 51 Q30 48 8 54 Z"/>
+        <path d="M10 40 Q30 34 50 37 Q70 40 90 34 L90 38 Q70 44 50 41 Q30 38 10 44 Z"/>
+        <path d="M12 30 Q32 24 50 27 Q68 30 88 24 L88 28 Q68 34 50 31 Q32 28 12 34 Z"/>
+        <path d="M18 20 Q36 15 50 18 Q64 21 82 15 L82 19 Q64 25 50 22 Q36 19 18 25 Z"/>
+        <path d="M28 11 Q40 7 50 9 Q60 11 72 7 L72 11 Q60 15 50 13 Q40 11 28 15 Z"/>
+      </g>
+    </svg>
+  )
+}
 import type { PatientPortalData, DocType } from '@/lib/types'
 import { PINGate } from './PINGate'
 import { DocumentViewer } from './DocumentViewer'
@@ -13,23 +33,16 @@ import { PhysicianContact } from './PhysicianContact'
 import { SetPIN } from './SetPIN'
 import { EditProfile } from './EditProfile'
 import { ImplantDetails } from './ImplantDetails'
+import { useLang } from '@/lib/lang-context'
 
 interface Props {
   data: PatientPortalData
   patientId: string
 }
 
-const DOC_META: Record<DocType, { label: string; sub: string; icon: React.ElementType; iconBg: string; iconColor: string }> = {
-  mri:           { label: 'Compatibilidad MRI',       sub: 'Condiciones e información de seguridad', icon: Activity,      iconBg: 'bg-blue-50',   iconColor: 'text-blue-600' },
-  airport:       { label: 'Carta para Aeropuerto',     sub: 'Carta de notificación de viaje',         icon: Plane,         iconBg: 'bg-emerald-50', iconColor: 'text-emerald-600' },
-  postop:        { label: 'Instrucciones Post-Op',     sub: 'Guía de recuperación',                   icon: ClipboardList, iconBg: 'bg-amber-50',  iconColor: 'text-amber-600' },
-  implant_sheet: { label: 'Detalles del Implante',     sub: 'Serial, lote y especificaciones',        icon: BadgeInfo,     iconBg: 'bg-violet-50', iconColor: 'text-violet-600' },
-  faq:           { label: 'Preguntas Frecuentes',      sub: 'Preguntas y respuestas comunes',         icon: HelpCircle,    iconBg: 'bg-rose-50',   iconColor: 'text-rose-600' },
-}
-
-const PUBLIC_DOC_ORDER: DocType[] = ['mri', 'airport', 'postop', 'faq']
-
 export function PatientPortal({ data, patientId }: Props) {
+  const { lang, setLang, t } = useLang()
+
   const [pinUnlocked, setPinUnlocked] = useState(false)
   const [showPinGate, setShowPinGate] = useState(false)
   const [showSetPin, setShowSetPin] = useState(false)
@@ -50,21 +63,28 @@ export function PatientPortal({ data, patientId }: Props) {
   const initials = displayName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
 
   const implantDateFormatted = data.implant?.implant_date
-    ? new Intl.DateTimeFormat('es-MX', { month: 'long', day: 'numeric', year: 'numeric' }).format(
-        new Date(data.implant.implant_date)
-      )
+    ? new Intl.DateTimeFormat(lang === 'en' ? 'en-US' : 'es-MX', {
+        month: 'long', day: 'numeric', year: 'numeric',
+      }).format(new Date(data.implant.implant_date))
     : null
 
-  // Tocar "Consultar información de implante"
+  // Metadatos de documentos con traducciones
+  const DOC_META = {
+    mri:           { label: t('doc_mri_label'),     sub: t('doc_mri_sub'),     icon: Activity,      iconBg: 'bg-blue-50',   iconColor: 'text-blue-600' },
+    airport:       { label: t('doc_airport_label'), sub: t('doc_airport_sub'), icon: Plane,         iconBg: 'bg-emerald-50', iconColor: 'text-emerald-600' },
+    postop:        { label: t('doc_postop_label'),  sub: t('doc_postop_sub'),  icon: ClipboardList, iconBg: 'bg-amber-50',  iconColor: 'text-amber-600' },
+    implant_sheet: { label: t('doc_implant_label'), sub: t('doc_implant_sub'), icon: BadgeInfo,     iconBg: 'bg-violet-50', iconColor: 'text-violet-600' },
+    faq:           { label: t('doc_faq_label'),     sub: t('doc_faq_sub'),     icon: HelpCircle,    iconBg: 'bg-rose-50',   iconColor: 'text-rose-600' },
+  }
+
+  const PUBLIC_DOC_ORDER: DocType[] = ['mri', 'airport', 'postop', 'faq']
+
   const handleImplantTap = () => {
     if (!pinIsSet) {
-      // Sin PIN → crear primero
       setShowSetPin(true)
     } else if (!pinUnlocked) {
-      // Tiene PIN pero no ha entrado → pedir PIN
       setShowPinGate(true)
     } else {
-      // Ya desbloqueado → abrir directo
       setShowImplantDetails(true)
     }
   }
@@ -78,11 +98,9 @@ export function PatientPortal({ data, patientId }: Props) {
   const handleSetPinSuccess = () => {
     setPinIsSet(true)
     setShowSetPin(false)
-    // Después de crear PIN entra directo, no pide el PIN de nuevo
     setShowImplantDetails(true)
   }
 
-  // Cambiar PIN desde dentro de ImplantDetails
   const handleChangePinFromDetails = () => {
     setShowImplantDetails(false)
     setShowSetPin(true)
@@ -91,7 +109,6 @@ export function PatientPortal({ data, patientId }: Props) {
   const handleSetPinChange = () => {
     setPinIsSet(true)
     setShowSetPin(false)
-    // Después de cambiar PIN vuelve a los detalles
     setShowImplantDetails(true)
   }
 
@@ -104,18 +121,35 @@ export function PatientPortal({ data, patientId }: Props) {
           <div className="flex justify-between items-start mb-5">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <div className="w-7 h-7 rounded-[8px] bg-brand-600 flex items-center justify-center">
-                  <Shield className="w-3.5 h-3.5 text-white" />
-                </div>
+                <ColoplastLogo size={28} />
                 <span className="font-serif text-white text-[16px] tracking-wide">TitanCare</span>
               </div>
               <p className="text-[10px] text-slate-500 tracking-widest uppercase pl-[36px]">
-                Coloplast Titan · Portal del Paciente
+                {t('portal_subtitle')}
               </p>
             </div>
-            <div className="flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-full px-3 py-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse-slow" />
-              <span className="text-[10px] text-blue-300 font-medium tracking-wide">Verificado</span>
+
+            {/* Lado derecho: badge verificado + botón idioma */}
+            <div className="flex items-center gap-2">
+              {/* Botón idioma */}
+              <button
+                onClick={() => setLang(lang === 'es' ? 'en' : 'es')}
+                className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-full px-2.5 py-1.5 hover:bg-white/10 transition-colors"
+                title={lang === 'es' ? 'Switch to English' : 'Cambiar a Español'}
+              >
+                <span className="text-[13px]">{lang === 'es' ? '🇺🇸' : '🇲🇽'}</span>
+                <span className="text-[10px] text-slate-400 font-medium">
+                  {lang === 'es' ? 'EN' : 'ES'}
+                </span>
+              </button>
+
+              {/* Badge verificado */}
+              <div className="flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-full px-3 py-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse-slow" />
+                <span className="text-[10px] text-blue-300 font-medium tracking-wide">
+                  {t('portal_verified')}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -133,7 +167,9 @@ export function PatientPortal({ data, patientId }: Props) {
             <div className="flex-1 min-w-0">
               <p className="text-white font-medium text-[14px] leading-tight">{displayName}</p>
               <p className="text-slate-500 text-[11px] mt-0.5 truncate">
-                {implantDateFormatted ? `Implante: ${implantDateFormatted}` : data.implant?.model ?? 'Titan Prosthesis'}
+                {implantDateFormatted
+                  ? `${t('portal_implant_date')}: ${implantDateFormatted}`
+                  : data.implant?.model ?? 'Titan Prosthesis'}
               </p>
             </div>
             <Pencil className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
@@ -144,10 +180,9 @@ export function PatientPortal({ data, patientId }: Props) {
         <div className="flex-1 px-4 py-5 flex flex-col gap-2.5">
 
           <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-slate-400 px-1 mb-0.5">
-            Documentos médicos
+            {t('portal_medical_docs')}
           </p>
 
-          {/* Documentos globales */}
           {PUBLIC_DOC_ORDER.map((docType, i) => {
             const meta = DOC_META[docType]
             const Icon = meta.icon
@@ -169,7 +204,7 @@ export function PatientPortal({ data, patientId }: Props) {
             )
           })}
 
-          {/* Botón implante — cambia según estado */}
+          {/* Botón implante */}
           {data.privateDocsAvailable && (
             <button
               onClick={handleImplantTap}
@@ -181,21 +216,21 @@ export function PatientPortal({ data, patientId }: Props) {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="text-[13px] font-medium text-slate-800">
-                    {!pinIsSet ? 'Crear PIN de seguridad' : 'Consultar información de implante'}
+                    {!pinIsSet ? t('portal_create_pin') : t('portal_implant_info')}
                   </p>
                   {pinIsSet && !pinUnlocked && (
                     <span className="text-[10px] bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded font-medium">
-                      PIN
+                      {t('portal_pin_badge')}
                     </span>
                   )}
                   {pinUnlocked && (
                     <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-medium">
-                      Desbloqueado
+                      {t('portal_unlocked')}
                     </span>
                   )}
                 </div>
                 <p className="text-[11px] text-slate-400 mt-0.5">
-                  {!pinIsSet ? 'Configura un PIN para proteger tus datos' : 'Lotes, foto y detalles del dispositivo'}
+                  {!pinIsSet ? t('portal_pin_protect') : t('portal_lots_detail')}
                 </p>
               </div>
               <ChevronRight className="w-4 h-4 text-slate-300 flex-shrink-0" />
@@ -204,7 +239,7 @@ export function PatientPortal({ data, patientId }: Props) {
 
           {/* Soporte */}
           <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-slate-400 px-1 mt-1.5 mb-0.5">
-            Soporte
+            {t('portal_support')}
           </p>
 
           <button
@@ -215,9 +250,9 @@ export function PatientPortal({ data, patientId }: Props) {
               <Phone className="w-[18px] h-[18px] text-white" />
             </div>
             <div className="flex-1">
-              <p className="text-[13px] font-medium text-white">Contactar Médico</p>
+              <p className="text-[13px] font-medium text-white">{t('portal_contact_doctor')}</p>
               <p className="text-[11px] text-blue-300 mt-0.5">
-                {data.physician?.full_name ?? 'Tu equipo médico'} · Lun–Vie
+                {data.physician?.full_name ?? t('portal_your_team')} · {t('portal_mon_fri')}
               </p>
             </div>
             <ChevronRight className="w-4 h-4 text-white/30 flex-shrink-0" />
@@ -227,8 +262,7 @@ export function PatientPortal({ data, patientId }: Props) {
           <div className="mt-1 bg-slate-100 rounded-[10px] p-3 flex gap-2 items-start">
             <Shield className="w-3.5 h-3.5 text-slate-400 mt-0.5 flex-shrink-0" />
             <p className="text-[10px] text-slate-400 leading-relaxed">
-              Esta información no reemplaza el consejo médico de su médico.
-              En caso de emergencia, contacte a su médico o llame al 911 inmediatamente.
+              {t('portal_disclaimer')}
             </p>
           </div>
 

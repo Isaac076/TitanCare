@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/server'
 import type { PatientPortalData } from '@/lib/types'
 import { PatientPortal } from '@/components/portal/PatientPortal'
 import { TokenProvider } from '@/lib/token-context'
+import { LangProvider } from '@/lib/lang-context'
 
 interface Props {
   params: { token: string }
@@ -56,7 +57,6 @@ export default async function PatientPortalPage({ params }: Props) {
 
   if (!portalData) notFound()
 
-  // Check if PIN is set
   const supabase = createAdminClient()
   const { data: pinRecord } = await supabase
     .from('patient_pins')
@@ -66,15 +66,16 @@ export default async function PatientPortalPage({ params }: Props) {
 
   portalData.pinIsSet = pinRecord?.is_set ?? false
 
-  // Log access
   supabase
     .from('access_logs')
     .insert({ patient_id: patientId, token_id: tokenId, doc_type: 'portal_open' })
     .then(() => {})
 
   return (
-    <TokenProvider token={params.token}>
-      <PatientPortal data={portalData} patientId={patientId!} />
-    </TokenProvider>
+    <LangProvider>
+      <TokenProvider token={params.token}>
+        <PatientPortal data={portalData} patientId={patientId!} />
+      </TokenProvider>
+    </LangProvider>
   )
 }
