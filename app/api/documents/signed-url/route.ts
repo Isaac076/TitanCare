@@ -3,8 +3,7 @@ import { createAdminClient } from '@/lib/supabase/server'
 
 const SIGNED_URL_EXPIRY = 15 * 60 // 15 minutos
 
-// Documentos globales (compartidos para todos los pacientes)
-const GLOBAL_DOC_TYPES = ['mri', 'airport', 'postop', 'faq', 'faq_es', 'faq_en']
+const GLOBAL_DOC_TYPES = ['mri', 'airport', 'postop', 'postop_genesis', 'faq', 'faq_es', 'faq_en']
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,24 +14,51 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = createAdminClient()
+    let resolvedDocType = docType
+
+    // Si es postop, verificar si el paciente tiene Genesis
+    if (docType === 'postop') {
+      const { data: implant } = await supabase
+        .from('implants')
+        .select('model')
+        .eq('patient_id', patientId)
+        .single()
+
+      if (implant?.model === 'Genesis') {
+        resolvedDocType = 'postop_genesis'
+      }
+    }
+
     let storagePath: string | null = null
 
-    if (isGlobal || GLOBAL_DOC_TYPES.includes(docType)) {
-      // Documento global compartido para todos los pacientes
+    if (isGlobal || GLOBAL_DOC_TYPES.includes(resolvedDocType)) {
       const { data: doc, error } = await supabase
         .from('global_documents')
         .select('storage_path')
-        .eq('doc_type', docType)
+        .eq('doc_type', resolvedDocType)
         .single()
 
       if (error || !doc) {
-        console.error('global_documents error:', error, 'docType:', docType)
-        return NextResponse.json({ error: 'Documento no encontrado' }, { status: 404 })
+        // Fallback a postop estándar si no existe postop_genesis
+        if (resolvedDocType === 'postop_genesis') {
+          const { data: fallback } = await supabase
+            .from('global_documents')
+            .select('storage_path')
+            .eq('doc_type', 'postop')
+            .single()
+          if (fallback) {
+            storagePath = fallback.storage_path
+          } else {
+            return NextResponse.json({ error: 'Documento no encontrado' }, { status: 404 })
+          }
+        } else {
+          console.error('global_documents error:', error, 'docType:', resolvedDocType)
+          return NextResponse.json({ error: 'Documento no encontrado' }, { status: 404 })
+        }
+      } else {
+        storagePath = doc.storage_path
       }
-
-      storagePath = doc.storage_path
     } else {
-      // Documento privado del paciente — requiere sesión PIN activa
       const { data: session } = await supabase
         .from('pin_sessions')
         .select('id')
@@ -58,20 +84,18 @@ export async function POST(request: NextRequest) {
       storagePath = doc.storage_path
     }
 
-    // Generar URL firmada (15 min)
     const { data: signedData, error: signedError } = await supabase.storage
       .from('patient-documents')
-      .createSignedUrl(storagePath, SIGNED_URL_EXPIRY)
+      .createSignedUrl(storagePath!, SIGNED_URL_EXPIRY)
 
     if (signedError || !signedData) {
       console.error('createSignedUrl error:', signedError)
       return NextResponse.json({ error: 'Error al generar enlace' }, { status: 500 })
     }
 
-    // Log de acceso
     await supabase.from('access_logs').insert({
       patient_id: patientId,
-      doc_type: docType,
+      doc_type: resolvedDocType,
     })
 
     return NextResponse.json({ url: signedData.signedUrl })
