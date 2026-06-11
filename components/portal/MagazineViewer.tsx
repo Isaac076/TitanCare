@@ -15,7 +15,6 @@ interface PageImg {
   height: number
 }
 
-// Carga pdfjs desde CDN solo en el browser (no en build/SSR)
 const PDFJS_VERSION = '3.11.174'
 const PDFJS_CDN = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.min.js`
 const WORKER_CDN = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.js`
@@ -39,8 +38,8 @@ export function MagazineViewer({ signedUrl, onClose }: Props) {
   const [loading, setLoading] = useState(true)
   const [progress, setProgress] = useState(0)
   const [error, setError] = useState('')
-  const [flipping, setFlipping] = useState(false)
-  const [flipDir, setFlipDir] = useState<'l' | 'r'>('l')
+  const [sliding, setSliding] = useState(false)
+  const [slideDir, setSlideDir] = useState<'l' | 'r'>('l')
   const [zoom, setZoom] = useState(1)
   const touchX = useRef(0)
 
@@ -48,7 +47,6 @@ export function MagazineViewer({ signedUrl, onClose }: Props) {
 
   const loadPDF = async () => {
     try {
-      // Cargar pdfjs desde CDN en runtime
       await loadScript(PDFJS_CDN)
       const pdfjsLib = (window as any).pdfjsLib
       pdfjsLib.GlobalWorkerOptions.workerSrc = WORKER_CDN
@@ -60,13 +58,13 @@ export function MagazineViewer({ signedUrl, onClose }: Props) {
       const imgs: PageImg[] = []
       for (let i = 1; i <= total; i++) {
         const page = await pdf.getPage(i)
-        const vp = page.getViewport({ scale: 1.6 })
+        const vp = page.getViewport({ scale: 2.0 })
         const canvas = document.createElement('canvas')
         canvas.width = vp.width
         canvas.height = vp.height
         const ctx = canvas.getContext('2d')!
         await page.render({ canvasContext: ctx, viewport: vp }).promise
-        imgs.push({ src: canvas.toDataURL('image/jpeg', 0.82), width: vp.width, height: vp.height })
+        imgs.push({ src: canvas.toDataURL('image/jpeg', 0.85), width: vp.width, height: vp.height })
         setProgress(Math.round((i / total) * 100))
       }
 
@@ -79,20 +77,22 @@ export function MagazineViewer({ signedUrl, onClose }: Props) {
     }
   }
 
-  const canNext = currentPage + 2 < totalPages
+  const canNext = currentPage < totalPages - 1
   const canPrev = currentPage > 0
 
   const goNext = useCallback(() => {
-    if (!canNext || flipping) return
-    setFlipDir('l'); setFlipping(true)
-    setTimeout(() => { setCurrentPage(p => p + 2); setFlipping(false) }, 360)
-  }, [canNext, flipping])
+    if (!canNext || sliding) return
+    setSlideDir('l')
+    setSliding(true)
+    setTimeout(() => { setCurrentPage(p => p + 1); setSliding(false) }, 300)
+  }, [canNext, sliding])
 
   const goPrev = useCallback(() => {
-    if (!canPrev || flipping) return
-    setFlipDir('r'); setFlipping(true)
-    setTimeout(() => { setCurrentPage(p => Math.max(0, p - 2)); setFlipping(false) }, 360)
-  }, [canPrev, flipping])
+    if (!canPrev || sliding) return
+    setSlideDir('r')
+    setSliding(true)
+    setTimeout(() => { setCurrentPage(p => p - 1); setSliding(false) }, 300)
+  }, [canPrev, sliding])
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
@@ -104,20 +104,13 @@ export function MagazineViewer({ signedUrl, onClose }: Props) {
     return () => window.removeEventListener('keydown', h)
   }, [goNext, goPrev, onClose])
 
-  const L = pages[currentPage]
-  const R = pages[currentPage + 1]
-  const label = `${currentPage + 1}${R ? `–${currentPage + 2}` : ''} / ${totalPages}`
-
-  const pageStyle = (anim: string): React.CSSProperties => ({
-    position: 'relative',
-    overflow: 'hidden',
-    animation: flipping ? `${anim} 0.36s ease` : 'none',
-  })
+  const page = pages[currentPage]
+  const label = `${currentPage + 1} / ${totalPages}`
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col items-center justify-center select-none"
-      style={{ background: 'radial-gradient(ellipse at center, #2a1800 0%, #0a0400 100%)' }}
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center select-none overflow-hidden"
+      style={{ background: 'radial-gradient(ellipse at center, #1a1a2e 0%, #0a0a14 100%)' }}
       onTouchStart={e => { touchX.current = e.touches[0].clientX }}
       onTouchEnd={e => {
         const dx = e.changedTouches[0].clientX - touchX.current
@@ -126,7 +119,7 @@ export function MagazineViewer({ signedUrl, onClose }: Props) {
     >
       {/* Header */}
       <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 py-3 z-10"
-        style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.75), transparent)' }}>
+        style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.8), transparent)' }}>
         <div className="flex items-center gap-2">
           <svg width="22" height="22" viewBox="0 0 100 100">
             <circle cx="50" cy="50" r="50" fill="#00B3D1"/>
@@ -180,43 +173,54 @@ export function MagazineViewer({ signedUrl, onClose }: Props) {
         </div>
       )}
 
-      {/* Book spread */}
+      {/* Single page viewer */}
       {!loading && !error && pages.length > 0 && (
-        <div className="relative flex items-center justify-center w-full h-full px-14" style={{ perspective: '2400px' }}>
+        <div className="relative flex items-center justify-center w-full h-full px-12">
 
+          {/* Prev button */}
           <button onClick={goPrev} disabled={!canPrev}
             className="absolute left-2 z-10 w-10 h-10 rounded-full flex items-center justify-center transition-all"
             style={{ background: canPrev ? 'rgba(255,255,255,.14)' : 'rgba(255,255,255,.04)' }}>
             <ChevronLeft className="w-5 h-5 text-white" style={{ opacity: canPrev ? 1 : .2 }} />
           </button>
 
-          <div style={{ transform: `scale(${zoom})`, transition: 'transform .2s ease', transformOrigin: 'center', display: 'flex', alignItems: 'center', position: 'relative' }}>
+          {/* Page container */}
+          <div style={{
+            transform: `scale(${zoom})`,
+            transition: 'transform .2s ease',
+            transformOrigin: 'center',
+            position: 'relative',
+          }}>
+            {/* Sombra */}
+            <div style={{
+              position: 'absolute', bottom: -12, left: '8%', right: '8%',
+              height: 20, background: 'rgba(0,0,0,.6)', filter: 'blur(12px)', borderRadius: '50%'
+            }} />
 
-            {/* Sombra libro */}
-            <div style={{ position: 'absolute', bottom: -10, left: '5%', right: '5%', height: 16, background: 'rgba(0,0,0,.65)', filter: 'blur(10px)', borderRadius: '50%' }} />
-
-            {/* Página izquierda */}
-            <div style={{ ...pageStyle(flipDir === 'r' ? 'flipInL' : 'flipOutL'), borderRadius: '3px 0 0 3px', transformOrigin: 'right center', boxShadow: 'inset -5px 0 10px rgba(0,0,0,.3)' }}>
-              {L
-                ? <img src={L.src} alt="" style={{ display: 'block', maxHeight: 'calc(100vh - 130px)', maxWidth: 'calc(50vw - 56px)', width: 'auto', height: 'auto' }} />
-                : <div style={{ width: 240, height: 320, background: '#f5f0e8' }} />
-              }
-              <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'linear-gradient(to right, rgba(0,0,0,.16) 0%, transparent 28%)' }} />
-            </div>
-
-            {/* Lomo */}
-            <div style={{ width: 7, alignSelf: 'stretch', flexShrink: 0, background: 'linear-gradient(to right, #5c3d1e, #c9a84c, #b8962e, #c9a84c, #5c3d1e)', boxShadow: '0 0 8px rgba(0,0,0,.55)' }} />
-
-            {/* Página derecha */}
-            <div style={{ ...pageStyle(flipDir === 'l' ? 'flipInR' : 'flipOutR'), borderRadius: '0 3px 3px 0', transformOrigin: 'left center', boxShadow: 'inset 5px 0 10px rgba(0,0,0,.3)' }}>
-              {R
-                ? <img src={R.src} alt="" style={{ display: 'block', maxHeight: 'calc(100vh - 130px)', maxWidth: 'calc(50vw - 56px)', width: 'auto', height: 'auto' }} />
-                : <div style={{ width: L?.width ?? 240, height: L?.height ?? 320, maxHeight: 'calc(100vh - 130px)', maxWidth: 'calc(50vw - 56px)', background: '#f5f0e8' }} />
-              }
-              <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'linear-gradient(to left, rgba(0,0,0,.16) 0%, transparent 28%)' }} />
+            {/* Página */}
+            <div style={{
+              borderRadius: 4,
+              overflow: 'hidden',
+              boxShadow: '0 8px 32px rgba(0,0,0,.6), 0 2px 8px rgba(0,0,0,.4)',
+              animation: sliding ? (slideDir === 'l' ? 'slideInFromRight .3s ease' : 'slideInFromLeft .3s ease') : 'none',
+            }}>
+              {page && (
+                <img
+                  src={page.src}
+                  alt={`Página ${currentPage + 1}`}
+                  style={{
+                    display: 'block',
+                    maxHeight: 'calc(100vh - 130px)',
+                    maxWidth: 'calc(100vw - 96px)',
+                    width: 'auto',
+                    height: 'auto',
+                  }}
+                />
+              )}
             </div>
           </div>
 
+          {/* Next button */}
           <button onClick={goNext} disabled={!canNext}
             className="absolute right-2 z-10 w-10 h-10 rounded-full flex items-center justify-center transition-all"
             style={{ background: canNext ? 'rgba(255,255,255,.14)' : 'rgba(255,255,255,.04)' }}>
@@ -227,19 +231,36 @@ export function MagazineViewer({ signedUrl, onClose }: Props) {
 
       {/* Footer */}
       {!loading && !error && (
-        <div className="absolute bottom-4 left-0 right-0 flex items-center justify-center gap-3">
+        <div className="absolute bottom-4 left-0 right-0 flex items-center justify-center gap-4">
+          {/* Dots indicator */}
+          <div className="flex items-center gap-1">
+            {Array.from({ length: Math.min(totalPages, 7) }).map((_, i) => {
+              const idx = totalPages <= 7 ? i : Math.floor(i * (totalPages / 7))
+              const isActive = totalPages <= 7 ? i === currentPage : (currentPage >= idx && currentPage < idx + Math.ceil(totalPages / 7))
+              return (
+                <div key={i} style={{
+                  width: isActive ? 16 : 4,
+                  height: 4,
+                  borderRadius: 2,
+                  background: isActive ? '#00B3D1' : 'rgba(255,255,255,.2)',
+                  transition: 'all .2s ease',
+                }} />
+              )
+            })}
+          </div>
           <span style={{ color: 'rgba(255,255,255,.3)', fontSize: 11, fontFamily: 'monospace' }}>{label}</span>
-          <span style={{ color: 'rgba(255,255,255,.18)', fontSize: 10 }}>
-            {lang === 'en' ? '← swipe →' : '← desliza →'}
-          </span>
         </div>
       )}
 
       <style>{`
-        @keyframes flipOutL { 0%{transform:rotateY(0);opacity:1} 100%{transform:rotateY(-20deg);opacity:.6} }
-        @keyframes flipInL  { 0%{transform:rotateY(-20deg);opacity:.6} 100%{transform:rotateY(0);opacity:1} }
-        @keyframes flipOutR { 0%{transform:rotateY(0);opacity:1} 100%{transform:rotateY(20deg);opacity:.6} }
-        @keyframes flipInR  { 0%{transform:rotateY(20deg);opacity:.6} 100%{transform:rotateY(0);opacity:1} }
+        @keyframes slideInFromRight {
+          0%   { transform: translateX(60px); opacity: 0; }
+          100% { transform: translateX(0);    opacity: 1; }
+        }
+        @keyframes slideInFromLeft {
+          0%   { transform: translateX(-60px); opacity: 0; }
+          100% { transform: translateX(0);     opacity: 1; }
+        }
       `}</style>
     </div>
   )
